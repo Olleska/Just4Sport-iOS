@@ -12,6 +12,7 @@ final class PaddingLabel: UILabel {
 }
 
 final class EventCardComponent: UIView {
+    var onDetailsTap: (() -> Void)?
     lazy var detailsButton: UIButton = {
         let button = UIButton()
         button.setTitle("Подробнее", for: .normal)
@@ -21,6 +22,7 @@ final class EventCardComponent: UIView {
         button.layer.cornerRadius = 16
         button.translatesAutoresizingMaskIntoConstraints = false
         button.heightAnchor.constraint(equalToConstant: 34).isActive = true
+        button.addTarget(self, action: #selector(detailsButtonTapped), for: .touchUpInside)
         return button
     }()
     lazy var eventImageView: UIImageView = {
@@ -116,11 +118,9 @@ final class EventCardComponent: UIView {
         super.init(frame: frame)
         setupLayout()
     }
-        
     required init?(coder: NSCoder) {
         fatalError("cat")
     }
-    
     func configure(title: String, start: String, end: String, type: String, level: String, sport: String, status: String, image: UIImage? = nil) {
         titleLabel.text = title
         eventTypeLabel.text = type
@@ -140,7 +140,6 @@ final class EventCardComponent: UIView {
             eventImageView.backgroundColor = UIColor(named: "grayColor")?.withAlphaComponent(0.2)
         }
     }
-        
     private func setupLayout() {
         addSubview(mainStackView)
         addSubview(detailsButton)
@@ -161,5 +160,8 @@ final class EventCardComponent: UIView {
         titleLabel.setContentHuggingPriority(.defaultHigh, for: .vertical)
         eventTypeLabel.setContentHuggingPriority(.defaultHigh, for: .vertical)
         skillLevelLabel.setContentHuggingPriority(.defaultHigh, for: .vertical)
+    }
+    @objc private func detailsButtonTapped() {
+        onDetailsTap?()
     }
 }

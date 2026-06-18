@@ -130,4 +130,35 @@ class EventNetworkService {
         }
         task.resume()
     }
+    func fetchEventDetails(id: String, completion: @escaping (Result<EventDetailModel, Error>) -> Void) {
+        guard let url = URL(string: "\(baseUrl)/events/\(id)") else { return }
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        if let token = TokenManager.shared.getAccessToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                DispatchQueue.main.async { completion(.failure(error)) }
+                return
+            }
+            guard let data = data else {
+                let noDataError = NSError(domain: "Network", code: -1, userInfo: [NSLocalizedDescriptionKey: "Сервер не вернул данные деталей"])
+                DispatchQueue.main.async { completion(.failure(noDataError)) }
+                return
+            }
+            do {
+                let decoder = JSONDecoder()
+                let decodedDetails = try decoder.decode(EventDetailModel.self, from: data)
+                DispatchQueue.main.async {
+                    completion(.success(decodedDetails))
+                }
+            } catch {
+                print("Ошибка декодирования деталей: \(error)")
+                DispatchQueue.main.async { completion(.failure(error)) }
+            }
+        }
+        task.resume()
+    }
 }

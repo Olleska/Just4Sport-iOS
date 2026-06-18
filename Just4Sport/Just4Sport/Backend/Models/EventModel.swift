@@ -19,6 +19,7 @@ struct EventModel: Decodable {
     let skillLevel: String
     let sport: String
     let photo: PhotoModel?
+    let description: String?
     
     var visibleEventName: String {
         switch eventType {

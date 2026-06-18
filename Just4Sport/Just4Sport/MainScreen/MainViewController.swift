@@ -137,6 +137,11 @@ class MainViewController: UIViewController {
                 sport: event.visibleSport,
                 status: event.visibleEventStatus
             )
+            card.onDetailsTap = { [weak self] in
+                guard let self = self else { return }
+                let detailedVC = DetailedViewController(eventId: event.id)
+                self.navigationController?.pushViewController(detailedVC, animated: true)
+            }
             cardsStackView.addArrangedSubview(card)
         }
     }
