@@ -5,32 +5,63 @@ class EventNetworkService {
     private init() {}
     
     private let baseUrl = "http://91.227.18.176/just4sport/api"
-    func fetchEvents(page: Int, size: Int = 20, completion: @escaping (Result<EventResponse, Error>) -> Void) {
+    func fetchEvents(page: Int, size: Int = 20, filters: EventFilterParameters? = nil, completion: @escaping (Result<EventResponse, Error>) -> Void) {
         let path = "/events"
         guard var urlComponents = URLComponents(string: "\(baseUrl)\(path)") else { return }
-        urlComponents.queryItems = [
+        var queryItems = [
             URLQueryItem(name: "page", value: "\(page)"),
             URLQueryItem(name: "size", value: "\(size)")
         ]
-        
+        if let filters = filters {
+            if let name = filters.name, !name.isEmpty {
+                queryItems.append(URLQueryItem(name: "name", value: name))
+            }
+            if let sport = filters.sport {
+                queryItems.append(URLQueryItem(name: "sport", value: sport))
+            }
+            if let eventType = filters.eventType {
+                queryItems.append(URLQueryItem(name: "eventType", value: eventType))
+            }
+            if let skillLevel = filters.skillLevel {
+                queryItems.append(URLQueryItem(name: "skillLevel", value: skillLevel))
+            }
+            if let status = filters.status {
+                queryItems.append(URLQueryItem(name: "status", value: status))
+            }
+            if let sortField = filters.sortField {
+                queryItems.append(URLQueryItem(name: "sortField", value: sortField))
+            }
+            if let sortDirection = filters.sortDirection {
+                queryItems.append(URLQueryItem(name: "order", value: sortDirection))
+            }
+            if let costStart = filters.costStart {
+                queryItems.append(URLQueryItem(name: "costStart", value: "\(costStart)"))
+            }
+            if let costEnd = filters.costEnd {
+                queryItems.append(URLQueryItem(name: "costEnd", value: "\(costEnd)"))
+            }
+            if let dateStart = filters.dateStart {
+                queryItems.append(URLQueryItem(name: "dateStart", value: dateStart))
+            }
+            if let dateEnd = filters.dateEnd {
+                queryItems.append(URLQueryItem(name: "dateEnd", value: dateEnd))
+            }
+        }
+        urlComponents.queryItems = queryItems
         guard let url = urlComponents.url else { return }
-        
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-        
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
                 DispatchQueue.main.async { completion(.failure(error)) }
                 return
             }
-            
             guard let data = data else {
                 let noDataError = NSError(domain: "Network", code: -1, userInfo: [NSLocalizedDescriptionKey: "Сервер не вернул данные"])
                 DispatchQueue.main.async { completion(.failure(noDataError)) }
                 return
             }
-            
             do {
                 let decoder = JSONDecoder()
                 let eventResponse = try decoder.decode(EventResponse.self, from: data)
@@ -39,6 +70,62 @@ class EventNetworkService {
                 }
             } catch {
                 DispatchQueue.main.async { completion(.failure(error)) }
+            }
+        }
+        task.resume()
+    }
+    func createEvent(model: EventCreateModel, photoData: Data? = nil, completion: @escaping (Result<Void, Error>) -> Void) {
+        let path = "/events"
+        guard let url = URL(string: "\(baseUrl)\(path)") else { return }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        let boundary = "Boundary-\(UUID().uuidString)"
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        if let token = TokenManager.shared.getAccessToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        var body = Data()
+        do {
+            let encoder = JSONEncoder()
+            let jsonData = try encoder.encode(model)
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"event\"\r\n".data(using: .utf8)!)
+            body.append("Content-Type: application/json\r\n\r\n".data(using: .utf8)!)
+            body.append(jsonData)
+            body.append("\r\n".data(using: .utf8)!)
+            if let photo = photoData {
+                body.append("--\(boundary)\r\n".data(using: .utf8)!)
+                body.append("Content-Disposition: form-data; name=\"file\"; filename=\"event_image.jpg\"\r\n".data(using: .utf8)!)
+                body.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
+                body.append(photo)
+                body.append("\r\n".data(using: .utf8)!)
+            }
+            body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+            request.httpBody = body
+            
+        } catch {
+            DispatchQueue.main.async { completion(.failure(error)) }
+            return
+        }
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                DispatchQueue.main.async { completion(.failure(error)) }
+                return
+            }
+            if let httpResponse = response as? HTTPURLResponse {
+                if (200...299).contains(httpResponse.statusCode) {
+                    DispatchQueue.main.async { completion(.success(())) }
+                } else {
+                    let serverMessage = data != nil ? (String(data: data!, encoding: .utf8) ?? "") : ""
+                    print("Лог ошибки сервера: \(serverMessage)")
+                    let serverError = NSError(
+                        domain: "Network",
+                        code: httpResponse.statusCode,
+                        userInfo: [NSLocalizedDescriptionKey: "Ошибка сервера. Статус-код: \(httpResponse.statusCode)"]
+                    )
+                    DispatchQueue.main.async { completion(.failure(serverError)) }
+                }
             }
         }
         task.resume()

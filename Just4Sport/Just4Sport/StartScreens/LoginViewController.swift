@@ -76,22 +76,40 @@ class LoginViewController: UIViewController {
     @objc func tapRegister() {
         navigationController?.popViewController(animated: false)
     }
-    @objc func tapMain() {
-        let mainVC = MainViewController()
-        navigationController?.pushViewController(mainVC, animated: false)
-    }
     private func updateLoginButtonState() {
         let emailText = emailField.textField.text ?? ""
         let isEmailValid = !emailText.isEmpty
         let passwordText = passwordField.textField.text ?? ""
         let isPasswordValid = !passwordText.isEmpty
         let isEnabled = isEmailValid && isPasswordValid
+        signInButton.isUserInteractionEnabled = isEnabled
         if !isEnabled {
             signInButton.backgroundColor = UIColor(named: "redColor")?.withAlphaComponent(0.5)
             signInButton.label.textColor = .white.withAlphaComponent(0.5)
         } else {
             signInButton.backgroundColor = UIColor(named: "redColor")
             signInButton.label.textColor = .white
+        }
+    }
+    @objc private func tapMain() {
+        let emailText = emailField.textField.text ?? ""
+        let passwordText = passwordField.textField.text ?? ""
+        guard !emailText.isEmpty, !passwordText.isEmpty else {
+            print("Заполните все поля")
+            return
+        }
+        let loginData = LoginRequest(email: emailText, password: passwordText)
+        AuthNetworkService.shared.login(requestModel: loginData) { [weak self] result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let response):
+                    TokenManager.shared.saveTokens(accessToken: response.accessToken, refreshToken: response.refreshToken)
+                    let mainVC = MainTabBarController()
+                    self?.navigationController?.pushViewController(mainVC, animated: false)
+                case .failure(let error):
+                    print("Ошибка входа: \(error.localizedDescription)")
+                }
+            }
         }
     }
 }

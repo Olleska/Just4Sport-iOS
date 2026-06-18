@@ -30,7 +30,7 @@ struct EventModel: Decodable {
     }
     var visibleEventStatus: String {
         switch eventStatus {
-        case "WILL_BE": return "будет"
+        case "WILL_BE": return "предстоит"
         case "UNDERWAY": return "в процессе"
         case "FINISHED": return "завершено"
         case "CANCELLED": return "отменено"
@@ -41,7 +41,7 @@ struct EventModel: Decodable {
         switch skillLevel {
         case "START": return "новички"
         case "MEDIUM": return "любители"
-        case "HARD": return "профиссионалы"
+        case "HARD": return "профeссионалы"
         default: return skillLevel.lowercased()
         }
     }
@@ -93,4 +93,32 @@ struct PhotoModel: Decodable {
     let id: String
     let path: String
     let title: String
+}
+
+struct EventCreateModel: Encodable {
+    let name: String
+    let description: String?
+    let dateStart: String
+    let dateEnd: String
+    let place: String
+    let cost: Double
+    let sport: String
+    let eventType: String
+    let skillLevel: String
+    let deadline: String
+    let teamsNumber: Int
+}
+
+struct EventFilterParameters {
+    var name: String?
+    var sport: String?
+    var eventType: String?
+    var skillLevel: String?
+    var status: String?
+    var sortField: String?
+    var sortDirection: String?
+    var costStart: Int?
+    var costEnd: Int?
+    var dateStart: String?
+    var dateEnd: String?
 }
