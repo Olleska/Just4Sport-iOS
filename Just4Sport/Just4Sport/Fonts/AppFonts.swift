@@ -14,6 +14,7 @@ extension UIFont {
         private static let app = UIFont(name: "Inter-Regular", size: 28)!
         static let body = scaledFont(for: app.withSize(16), textStyle: .body)
         static let callout = scaledFont(for: app.withSize(18), textStyle: .callout)
+        static let footnote1 = scaledFont(for: app.withSize(14), textStyle: .caption1)
         private static let app2 = UIFont(name: "IBMPlexSans-Medium", size: 28)!
         static let footnote = scaledFont(for: app2.withSize(14), textStyle: .footnote)
     }

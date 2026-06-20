@@ -31,4 +31,21 @@ class ProfileNetworkService {
         }
         task.resume()
     }
+    func logout(accessToken: String, refreshToken: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        guard let url = URL(string: "http://91.227.18.176/just4sport/api/auth/logout") else { return }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("*/*", forHTTPHeaderField: "accept")
+        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        let body: [String: String] = ["token": refreshToken]
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        URLSession.shared.dataTask(with: request) { _, response, error in
+            if let error = error {
+                completion(.failure(error))
+                return
+            }
+            completion(.success(()))
+        }.resume()
+    }
 }

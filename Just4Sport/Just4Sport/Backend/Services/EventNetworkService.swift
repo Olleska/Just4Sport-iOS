@@ -161,4 +161,50 @@ class EventNetworkService {
         }
         task.resume()
     }
+    func sendTeamApplication(id: String, body: TeamApplicationRequest, completion: @escaping (Result<Void, Error>) -> Void) {
+        let urlString = "\(baseUrl)/event/\(id)/application"
+        guard let url = URL(string: urlString) else { return }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        if let token = TokenManager.shared.getAccessToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        do {
+            let jsonData = try JSONEncoder().encode(body)
+            request.httpBody = jsonData
+        } catch {
+            DispatchQueue.main.async { completion(.failure(error)) }
+            return
+        }
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                DispatchQueue.main.async { completion(.failure(error)) }
+                return
+            }
+            guard let httpResponse = response as? HTTPURLResponse else {
+                let unknownError = NSError(
+                    domain: "Network",
+                    code: -1,
+                    userInfo: [NSLocalizedDescriptionKey: "Неизвестный ответ сервера"]
+                )
+                DispatchQueue.main.async { completion(.failure(unknownError)) }
+                return
+            }
+            if (200...299).contains(httpResponse.statusCode) {
+                DispatchQueue.main.async { completion(.success(())) }
+            } else {
+                let serverMessage = data != nil ? (String(data: data!, encoding: .utf8) ?? "") : ""
+                print("Лог ошибки бэкенда при подаче заявки: \(serverMessage)")
+                let errorDescription = !serverMessage.isEmpty ? serverMessage : "Ошибка сервера. Статус: \(httpResponse.statusCode)"
+                let serverError = NSError(
+                    domain: "Network",
+                    code: httpResponse.statusCode,
+                    userInfo: [NSLocalizedDescriptionKey: errorDescription]
+                )
+                DispatchQueue.main.async { completion(.failure(serverError)) }
+            }
+        }.resume()
+    }
 }

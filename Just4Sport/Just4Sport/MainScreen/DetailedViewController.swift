@@ -175,11 +175,24 @@ class DetailedViewController: UIViewController {
     private lazy var backButton: UIButton = {
         let button = UIButton(type: .system)
         button.setTitle("Назад к мероприятиям", for: .normal)
-        button.setTitleColor(.white, for: .normal)
+        let grayColor = UIColor(named: "grayColor")
+        let redColor = UIColor(named: "redColor")
+        button.setTitleColor(redColor, for: .normal)
         button.titleLabel?.font = .Bold.body
-        button.backgroundColor = UIColor(named: "redColor") ?? .systemRed
+        button.backgroundColor = grayColor?.withAlphaComponent(0.2)
         button.layer.cornerRadius = 16
         button.addTarget(self, action: #selector(backButtonTapped), for: .touchUpInside)
+        return button
+    }()
+    private lazy var registerButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.setTitle("Зарегистрироваться", for: .normal)
+        let redColor = UIColor(named: "redColor") ?? .systemRed
+        button.setTitleColor(redColor, for: .normal)
+        button.titleLabel?.font = .Bold.body
+        button.backgroundColor = redColor.withAlphaComponent(0.2)
+        button.layer.cornerRadius = 16
+        button.addTarget(self, action: #selector(registerButtonTapped), for: .touchUpInside)
         return button
     }()
     init(eventId: String) {
@@ -298,8 +311,10 @@ class DetailedViewController: UIViewController {
     private func setupLayout() {
         view.addSubview(scrollView)
         view.addSubview(backButton)
+        view.addSubview(registerButton)
         view.addSubview(activityIndicator)
         scrollView.translatesAutoresizingMaskIntoConstraints = false
+        registerButton.translatesAutoresizingMaskIntoConstraints = false
         backButton.translatesAutoresizingMaskIntoConstraints = false
         activityIndicator.translatesAutoresizingMaskIntoConstraints = false
         scrollView.addSubview(contentStackView)
@@ -325,20 +340,20 @@ class DetailedViewController: UIViewController {
         contentStackView.addArrangedSubview(infoContainerView)
         contentStackView.addArrangedSubview(descriptionStackView)
         contentStackView.addArrangedSubview(deadlineStackView)
-        contentStackView.addArrangedSubview(teamsStackView)
         contentStackView.addArrangedSubview(costStackView)
         contentStackView.addArrangedSubview(authorStackView)
+        contentStackView.addArrangedSubview(teamsStackView)
+        contentStackView.addArrangedSubview(registerButton)
+        contentStackView.addArrangedSubview(backButton)
         NSLayoutConstraint.activate([
             activityIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             activityIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-            backButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
-            backButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
-            backButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -16),
-            backButton.heightAnchor.constraint(equalToConstant: 50),
+            backButton.heightAnchor.constraint(equalToConstant: 44),
+            registerButton.heightAnchor.constraint(equalToConstant: 44),
             scrollView.topAnchor.constraint(equalTo: view.topAnchor, constant: 58),
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
-            scrollView.bottomAnchor.constraint(equalTo: backButton.topAnchor, constant: -16),
+            scrollView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -16),
             contentStackView.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
             contentStackView.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor),
             contentStackView.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
@@ -352,5 +367,14 @@ class DetailedViewController: UIViewController {
     }
     @objc private func backButtonTapped() {
         navigationController?.popViewController(animated: true)
+    }
+    @objc private func registerButtonTapped() {
+        let userCaptainNickname = "my_nickname"
+        let registerVC = GameRegisterViewController(eventId: eventId, captainNickname: userCaptainNickname)
+        if let sheet = registerVC.sheetPresentationController {
+            sheet.detents = [.medium(), .large()]
+            sheet.prefersGrabberVisible = true
+        }
+        present(registerVC, animated: true)
     }
 }
