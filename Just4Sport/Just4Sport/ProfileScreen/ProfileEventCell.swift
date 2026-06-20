@@ -122,7 +122,6 @@ final class ProfileEventCell: UICollectionViewCell {
             dateLabel.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -12)
         ])
     }
-    
     func configure(with event: ProfileEvent) {
         titleLabel.text = event.name
         let sportType = SportType(rawValue: event.sport)?.visibleName ?? event.sport

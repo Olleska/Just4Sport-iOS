@@ -1,9 +1,11 @@
 import UIKit
 
-class DetailedViewController: UIViewController {
+final class EventDetailsViewController: UIViewController {
     
     private let eventId: String
+    private let role: EventRole
     private var eventDetails: EventDetailModel?
+    private var isCaptain: Bool = false
     private let activityIndicator: UIActivityIndicatorView = {
         let indicator = UIActivityIndicatorView(style: .large)
         indicator.color = UIColor(named: "redColor") ?? .systemRed
@@ -57,6 +59,7 @@ class DetailedViewController: UIViewController {
         stack.distribution = .fill
         return stack
     }()
+    
     private let secondRowTagsStackView: UIStackView = {
         let stack = UIStackView()
         stack.axis = .horizontal
@@ -65,6 +68,7 @@ class DetailedViewController: UIViewController {
         stack.distribution = .fill
         return stack
     }()
+    
     private let descriptionStackView: UIStackView = {
         let stack = UIStackView()
         stack.axis = .vertical
@@ -105,11 +109,6 @@ class DetailedViewController: UIViewController {
         label.numberOfLines = 0
         return label
     }()
-    private let deadlineContainerView: UIView = {
-        let view = UIView()
-        view.layer.cornerRadius = 16
-        return view
-    }()
     private let deadlineStackView: UIStackView = {
         let stack = UIStackView()
         stack.axis = .vertical
@@ -141,7 +140,7 @@ class DetailedViewController: UIViewController {
     }()
     private let teamsTitleLabel: UILabel = {
         let label = UILabel()
-        label.text = "Участвующие команды"
+        label.text = "Участвующие команды и составы"
         label.font = .Bold.title3
         label.textColor = .black
         return label
@@ -185,52 +184,17 @@ class DetailedViewController: UIViewController {
         label.textColor = .black
         return label
     }()
+    
     private let placeValueLabel: UILabel = {
         let label = UILabel()
         label.font = .Regular.body
         label.textColor = .black
         return label
     }()
-    private let commentsMainStackView: UIStackView = {
-        let stack = UIStackView()
-        stack.axis = .vertical
-        stack.spacing = 12
-        return stack
-    }()
-        
-    private let commentsHeaderStackView: UIStackView = {
-        let stack = UIStackView()
-        stack.axis = .horizontal
-        stack.alignment = .center
-        return stack
-    }()
-        
-    private let commentsTitleLabel: UILabel = {
-        let label = UILabel()
-        label.text = "Комментарии"
-        label.font = .Bold.title3
-        label.textColor = .black
-        return label
-    }()
-        
-    private lazy var addCommentButton: UIButton = {
-        let button = UIButton(type: .system)
-        let configuration = UIImage.SymbolConfiguration(pointSize: 22, weight: .semibold)
-        let image = UIImage(systemName: "plus.circle.fill", withConfiguration: configuration)
-        button.setImage(image, for: .normal)
-        button.tintColor = UIColor(named: "redColor") ?? .systemRed
-        button.addTarget(self, action: #selector(addCommentButtonTapped), for: .touchUpInside)
-        return button
-    }()
-    private let commentsContainerStackView: UIStackView = {
-        let stack = UIStackView()
-        stack.axis = .vertical
-        stack.spacing = 10
-        return stack
-    }()
+    
     private lazy var backButton: UIButton = {
         let button = UIButton(type: .system)
-        button.setTitle("Назад к мероприятиям", for: .normal)
+        button.setTitle("Назад в профиль", for: .normal)
         let grayColor = UIColor(named: "grayColor")
         let redColor = UIColor(named: "redColor")
         button.setTitleColor(redColor, for: .normal)
@@ -240,19 +204,19 @@ class DetailedViewController: UIViewController {
         button.addTarget(self, action: #selector(backButtonTapped), for: .touchUpInside)
         return button
     }()
-    private lazy var registerButton: UIButton = {
+    
+    private lazy var cancelApplicationButton: UIButton = {
         let button = UIButton(type: .system)
-        button.setTitle("Зарегистрироваться", for: .normal)
-        let redColor = UIColor(named: "redColor") ?? .systemRed
-        button.setTitleColor(redColor, for: .normal)
+        //button.setTitle("Отозвать заявку команды", for: .normal)
         button.titleLabel?.font = .Bold.body
-        button.backgroundColor = redColor.withAlphaComponent(0.2)
+        //button.backgroundColor = UIColor(named: "redColor") ?? .systemRed
         button.layer.cornerRadius = 16
-        button.addTarget(self, action: #selector(registerButtonTapped), for: .touchUpInside)
+        button.addTarget(self, action: #selector(cancelApplicationTapped), for: .touchUpInside)
         return button
     }()
-    init(eventId: String) {
+    init(eventId: String, role: EventRole) {
         self.eventId = eventId
+        self.role = role
         super.init(nibName: nil, bundle: nil)
     }
     required init?(coder: NSCoder) {
@@ -266,61 +230,90 @@ class DetailedViewController: UIViewController {
         super.viewDidLoad()
         view.backgroundColor = .white
         setupLayout()
+        configureActionButtonsByRole()
         loadData()
     }
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         navigationController?.setNavigationBarHidden(false, animated: animated)
     }
+    private func configureActionButtonsByRole() {
+        switch role {
+        case .author:
+            cancelApplicationButton.setTitle("Управлять мероприятием", for: .normal)
+            cancelApplicationButton.backgroundColor = UIColor(named: "redColor") ?? .systemRed
+            cancelApplicationButton.tintColor = .white
+            cancelApplicationButton.isHidden = false
+            cancelApplicationButton.isUserInteractionEnabled = true
+        case .participant:
+            if isCaptain {
+                cancelApplicationButton.setTitle("Отозвать заявку команды", for: .normal)
+                cancelApplicationButton.tintColor = .white
+                cancelApplicationButton.backgroundColor = UIColor(named: "redColor") ?? .systemRed
+                cancelApplicationButton.isHidden = false
+                cancelApplicationButton.isUserInteractionEnabled = true
+            } else {
+                cancelApplicationButton.setTitle("Вы участвуете в мероприятии", for: .normal)
+                cancelApplicationButton.tintColor = UIColor(named: "redColor") ?? .systemRed
+                cancelApplicationButton.backgroundColor = UIColor(named: "redColor")?.withAlphaComponent(0.2) ?? .systemRed
+                cancelApplicationButton.isHidden = false
+                cancelApplicationButton.isUserInteractionEnabled = false
+            }
+        }
+    }
     private func loadData() {
         activityIndicator.startAnimating()
         scrollView.alpha = 0
         EventNetworkService.shared.fetchEventDetails(id: eventId) { [weak self] result in
-            guard let self = self else { return }
-            self.activityIndicator.stopAnimating()
-            switch result {
-            case .success(let details):
-                self.eventDetails = details
-                self.configureUI(with: details)
-                UIView.animate(withDuration: 0.3) {
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                self.activityIndicator.stopAnimating()
+                
+                switch result {
+                case .success(let details):
+                    self.eventDetails = details
+                    self.configureUI(with: details)
+                    UIView.animate(withDuration: 0.3) {
+                        self.scrollView.alpha = 1
+                    }
+                case .failure(let error):
+                    self.descriptionTextLabel.text = "Не удалось загрузить данные мероприятия."
                     self.scrollView.alpha = 1
+                    print("Ошибка при получении деталей в профиле: \(error.localizedDescription)")
                 }
-            case .failure(let error):
-                self.descriptionTextLabel.text = "Не удалось загрузить данные мероприятия."
-                self.scrollView.alpha = 1
-                print("Ошибка при получении деталей: \(error.localizedDescription)")
             }
         }
     }
+    
     private func configureUI(with details: EventDetailModel) {
         titleLabel.text = details.name
         dateLabel.text = "Начало: \(details.visibleStartDate)\nКонец:  \(details.visibleEndDate)"
         deadlineDateLabel.text = details.visibleDeadline
-        teamsValueLabel.text = details.visibleTeamsList
         costValueLabel.text = details.visibleCost
         placeValueLabel.text = details.place
+        teamsValueLabel.text = details.visibleTeamsList
         firstRowTagsStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
         secondRowTagsStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
-        commentsContainerStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        
         let statusPill = createPillBadge(
             text: details.visibleEventStatus,
-            backgroundColor: (UIColor(named: "yellowColor")?.withAlphaComponent(0.2))!,
-            textColor: UIColor(named: "yellowColor")!
+            backgroundColor: UIColor(named: "yellowColor")?.withAlphaComponent(0.2) ?? .systemYellow.withAlphaComponent(0.2),
+            textColor: UIColor(named: "yellowColor") ?? .systemYellow
         )
         let typePill = createPillBadge(
             text: details.visibleEventName,
-            backgroundColor: (UIColor(named: "eventTypeColor")?.withAlphaComponent(0.2))!,
-            textColor: UIColor(named: "eventTypeColor")!
+            backgroundColor: UIColor(named: "eventTypeColor")?.withAlphaComponent(0.2) ?? .systemBlue.withAlphaComponent(0.2),
+            textColor: UIColor(named: "eventTypeColor") ?? .systemBlue
         )
         let skillPill = createPillBadge(
             text: details.visibleSkillLevel,
-            backgroundColor: (UIColor(named: "greenColor")?.withAlphaComponent(0.2))!,
-            textColor: UIColor(named: "greenColor")!
+            backgroundColor: UIColor(named: "greenColor")?.withAlphaComponent(0.2) ?? .systemGreen.withAlphaComponent(0.2),
+            textColor: UIColor(named: "greenColor") ?? .systemGreen
         )
         let sportPill = createPillBadge(
             text: details.visibleSport,
-            backgroundColor: (UIColor(named: "redColor")?.withAlphaComponent(0.2))!,
-            textColor: UIColor(named: "redColor")!
+            backgroundColor: UIColor(named: "redColor")?.withAlphaComponent(0.2) ?? .systemRed.withAlphaComponent(0.2),
+            textColor: UIColor(named: "redColor") ?? .systemRed
         )
         firstRowTagsStackView.addArrangedSubview(statusPill)
         let spacer1 = UIView()
@@ -332,9 +325,6 @@ class DetailedViewController: UIViewController {
         let spacer2 = UIView()
         spacer2.setContentHuggingPriority(.defaultLow, for: .horizontal)
         secondRowTagsStackView.addArrangedSubview(spacer2)
-        let spacer = UIView()
-        spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        tagsStackView.addArrangedSubview(spacer)
         if let desc = details.description, !desc.isEmpty {
             descriptionTextLabel.text = desc
         } else {
@@ -346,56 +336,20 @@ class DetailedViewController: UIViewController {
         } else {
             authorNameLabel.text = authorName
         }
-        if let comments = details.comments, !comments.isEmpty {
-            commentsMainStackView.isHidden = false
-            for comment in comments {
-                let commentCard = createCommentCard(author: comment.authorName, text: comment.content)
-                commentsContainerStackView.addArrangedSubview(commentCard)
-            }
-        } else {
-            let noCommentsLabel = UILabel()
-            noCommentsLabel.text = "Комментариев пока нет. Будьте первым!"
-            noCommentsLabel.font = .Regular.body
-            noCommentsLabel.textColor = .gray
-            commentsContainerStackView.addArrangedSubview(noCommentsLabel)
-        }
     }
-    private func createCommentCard(author: String, text: String) -> UIView {
-        let card = UIView()
-        card.backgroundColor = UIColor(named: "grayColor")?.withAlphaComponent(0.1) ?? .systemGray6
-        card.layer.cornerRadius = 12
-        let authorLabel = UILabel()
-        authorLabel.text = author
-        authorLabel.font = .SemiBold.body
-        authorLabel.textColor = UIColor(named: "redColor")
-        let textLabel = UILabel()
-        textLabel.text = text
-        textLabel.font = .Regular.body
-        textLabel.textColor = .darkGray
-        textLabel.numberOfLines = 0
-        let innerStack = UIStackView(arrangedSubviews: [authorLabel, textLabel])
-        innerStack.axis = .vertical
-        innerStack.spacing = 4
-        innerStack.translatesAutoresizingMaskIntoConstraints = false
-        card.addSubview(innerStack)
-        NSLayoutConstraint.activate([
-            innerStack.topAnchor.constraint(equalTo: card.topAnchor, constant: 12),
-            innerStack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -12),
-            innerStack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
-            innerStack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16)
-        ])
-        return card
-    }
+    
     private func createPillBadge(text: String, backgroundColor: UIColor, textColor: UIColor) -> UIView {
         let container = UIView()
         container.backgroundColor = backgroundColor
         container.layer.cornerRadius = 10
         container.clipsToBounds = true
+        
         let label = UILabel()
         label.text = text
         label.font = .Regular.body
         label.textColor = textColor
         label.translatesAutoresizingMaskIntoConstraints = false
+        
         container.addSubview(label)
         NSLayoutConstraint.activate([
             label.topAnchor.constraint(equalTo: container.topAnchor, constant: 6),
@@ -407,19 +361,13 @@ class DetailedViewController: UIViewController {
     }
     private func setupLayout() {
         view.addSubview(scrollView)
-        view.addSubview(backButton)
-        view.addSubview(registerButton)
         view.addSubview(activityIndicator)
         scrollView.translatesAutoresizingMaskIntoConstraints = false
-        registerButton.translatesAutoresizingMaskIntoConstraints = false
-        backButton.translatesAutoresizingMaskIntoConstraints = false
         activityIndicator.translatesAutoresizingMaskIntoConstraints = false
         scrollView.addSubview(contentStackView)
         contentStackView.translatesAutoresizingMaskIntoConstraints = false
         infoContainerView.addSubview(dateLabel)
         dateLabel.translatesAutoresizingMaskIntoConstraints = false
-        deadlineContainerView.addSubview(deadlineStackView)
-        deadlineStackView.translatesAutoresizingMaskIntoConstraints = false
         deadlineStackView.addArrangedSubview(deadlineTitleLabel)
         deadlineStackView.addArrangedSubview(deadlineDateLabel)
         descriptionStackView.addArrangedSubview(descriptionTitleLabel)
@@ -434,13 +382,6 @@ class DetailedViewController: UIViewController {
         authorStackView.addArrangedSubview(authorNameLabel)
         tagsStackView.addArrangedSubview(firstRowTagsStackView)
         tagsStackView.addArrangedSubview(secondRowTagsStackView)
-        commentsHeaderStackView.addArrangedSubview(commentsTitleLabel)
-        let headerSpacer = UIView()
-        headerSpacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        commentsHeaderStackView.addArrangedSubview(headerSpacer)
-        commentsHeaderStackView.addArrangedSubview(addCommentButton)
-        commentsMainStackView.addArrangedSubview(commentsHeaderStackView)
-        commentsMainStackView.addArrangedSubview(commentsContainerStackView)
         contentStackView.addArrangedSubview(titleLabel)
         contentStackView.addArrangedSubview(tagsStackView)
         contentStackView.addArrangedSubview(infoContainerView)
@@ -450,48 +391,59 @@ class DetailedViewController: UIViewController {
         contentStackView.addArrangedSubview(costStackView)
         contentStackView.addArrangedSubview(authorStackView)
         contentStackView.addArrangedSubview(teamsStackView)
-        contentStackView.addArrangedSubview(commentsMainStackView)
-        contentStackView.addArrangedSubview(registerButton)
+        contentStackView.addArrangedSubview(cancelApplicationButton)
         contentStackView.addArrangedSubview(backButton)
+        backButton.translatesAutoresizingMaskIntoConstraints = false
+        cancelApplicationButton.translatesAutoresizingMaskIntoConstraints = false
+        let cancelHeightConstraint = cancelApplicationButton.heightAnchor.constraint(equalToConstant: 44)
+        cancelHeightConstraint.priority = .defaultHigh
         NSLayoutConstraint.activate([
             activityIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             activityIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            
             backButton.heightAnchor.constraint(equalToConstant: 44),
-            registerButton.heightAnchor.constraint(equalToConstant: 44),
+            cancelHeightConstraint,
+            
             scrollView.topAnchor.constraint(equalTo: view.topAnchor, constant: 58),
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
             scrollView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -16),
+            
             contentStackView.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
             contentStackView.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor),
             contentStackView.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
             contentStackView.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
             contentStackView.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor),
+            
             dateLabel.topAnchor.constraint(equalTo: infoContainerView.topAnchor, constant: 16),
             dateLabel.leadingAnchor.constraint(equalTo: infoContainerView.leadingAnchor, constant: 16),
             dateLabel.trailingAnchor.constraint(equalTo: infoContainerView.trailingAnchor, constant: -16),
-            dateLabel.bottomAnchor.constraint(equalTo: infoContainerView.bottomAnchor, constant: -16),
-            addCommentButton.widthAnchor.constraint(equalToConstant: 32),
-            addCommentButton.heightAnchor.constraint(equalToConstant: 32)
+            dateLabel.bottomAnchor.constraint(equalTo: infoContainerView.bottomAnchor, constant: -16)
         ])
     }
     @objc private func backButtonTapped() {
         navigationController?.popViewController(animated: true)
     }
-    @objc private func registerButtonTapped() {
-        let userCaptainNickname = "my_nickname"
-        let registerVC = GameRegisterViewController(eventId: eventId, captainNickname: userCaptainNickname)
-        if let sheet = registerVC.sheetPresentationController {
-            sheet.detents = [.medium(), .large()]
-            sheet.prefersGrabberVisible = true
-        }
-        present(registerVC, animated: true)
+    @objc private func cancelApplicationTapped() {
+        let alert = UIAlertController(
+            title: "Отзыв заявки",
+            message: "Вы уверены, что хотите отозвать заявку вашей команды на участие?",
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "Отмена", style: .cancel))
+        alert.addAction(UIAlertAction(title: "Да, отозвать", style: .destructive) { [weak self] _ in
+            self?.performDeleteApplicationRequest()
+        })
+        present(alert, animated: true)
     }
-    @objc private func addCommentButtonTapped() {
-        let addCommentVC = AddCommentViewController(eventId: eventId)
-        addCommentVC.onCommentSubmitted = { [weak self] in
-            self?.loadData()
+    private func performDeleteApplicationRequest() {
+        cancelApplicationButton.isEnabled = false
+        activityIndicator.startAnimating()
+        print("Вызов DELETE-запроса для удаления заявки на ивент: \(eventId)")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            self?.activityIndicator.stopAnimating()
+            self?.cancelApplicationButton.isEnabled = true
+            self?.navigationController?.popViewController(animated: true)
         }
-        present(addCommentVC, animated: true)
     }
 }

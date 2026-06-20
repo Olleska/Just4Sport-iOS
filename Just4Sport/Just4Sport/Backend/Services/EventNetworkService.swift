@@ -207,4 +207,37 @@ class EventNetworkService {
             }
         }.resume()
     }
+    func postComment(eventId: String, content: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        guard let url = URL(string: "\(baseUrl)/comment/\(eventId)") else { return }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        if let token = TokenManager.shared.getAccessToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        let body: [String: Any] = ["content": content]
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                DispatchQueue.main.async { completion(.failure(error)) }
+                return
+            }
+            if let httpResponse = response as? HTTPURLResponse {
+                if (200...299).contains(httpResponse.statusCode) {
+                    DispatchQueue.main.async { completion(.success(())) }
+                } else {
+                    let serverMessage = data != nil ? (String(data: data!, encoding: .utf8) ?? "") : ""
+                    print("Лог ошибки бэкенда (комментарии): \(serverMessage) | Статус: \(httpResponse.statusCode)")
+                    let errorDescription = !serverMessage.isEmpty ? serverMessage : "Ошибка сервера. Статус: \(httpResponse.statusCode)"
+                    let serverError = NSError(
+                        domain: "Network",
+                        code: httpResponse.statusCode,
+                        userInfo: [NSLocalizedDescriptionKey: errorDescription]
+                    )
+                    DispatchQueue.main.async { completion(.failure(serverError)) }
+                }
+            }
+        }.resume()
+    }
 }

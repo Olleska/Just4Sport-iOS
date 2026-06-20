@@ -1,6 +1,7 @@
 import Foundation
 
 struct ProfileResponse: Decodable {
+    let id: String?
     let name: String
     let nickname: String
     let email: String
@@ -89,4 +90,16 @@ struct PhotoProfileModel: Decodable {
     let id: String
     let path: String
     let title: String
+}
+
+enum EventRole {
+    case author
+    case participant
+}
+
+struct UpdateProfileRequest: Encodable {
+    let name: String
+    let nickname: String
+    let email: String
+    let favoriteSports: [String]
 }

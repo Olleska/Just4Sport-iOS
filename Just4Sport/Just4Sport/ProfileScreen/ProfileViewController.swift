@@ -1,7 +1,7 @@
 import UIKit
 
 final class ProfileViewController: UIViewController {
-    
+    private var currentProfileRawData: ProfileResponse?
     private var sportsTags: [String] = []
     private var authorEvents: [ProfileEvent] = []
     private var participantEvents: [ProfileEvent] = []
@@ -18,6 +18,7 @@ final class ProfileViewController: UIViewController {
         let image = UIImage(named: "penImage")
         button.setImage(image, for: .normal)
         button.tintColor = UIColor(named: "redColor")
+        button.addTarget(self, action: #selector(editButtonTapped), for: .touchUpInside)
         button.translatesAutoresizingMaskIntoConstraints = false
         return button
     }()
@@ -85,8 +86,7 @@ final class ProfileViewController: UIViewController {
         let layout = LeftAlignedFlowLayout()
         layout.minimumInteritemSpacing = 10
         layout.minimumLineSpacing = 10
-        layout.estimatedItemSize = UICollectionViewFlowLayout.automaticSize 
-        
+        layout.estimatedItemSize = UICollectionViewFlowLayout.automaticSize
         let collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
         collectionView.backgroundColor = .clear
         collectionView.dataSource = self
@@ -117,7 +117,7 @@ final class ProfileViewController: UIViewController {
         let layout = UICollectionViewFlowLayout()
         layout.scrollDirection = .horizontal
         layout.minimumInteritemSpacing = 12
-        layout.itemSize = CGSize(width: 200, height: 140)
+        layout.itemSize = CGSize(width: 235, height: 140)
         let cv = UICollectionView(frame: .zero, collectionViewLayout: layout)
         cv.backgroundColor = .clear
         cv.showsHorizontalScrollIndicator = false
@@ -232,6 +232,20 @@ final class ProfileViewController: UIViewController {
                           animations: nil,
                           completion: nil)
     }
+    @objc private func editButtonTapped() {
+        guard let profileData = currentProfileRawData else { return }
+        let editVC = EditProfileViewController(
+            userId: profileData.id!,
+            name: profileData.name,
+            nickname: profileData.nickname,
+            email: profileData.email,
+            favoriteSports: profileData.favoriteSports
+        )
+        editVC.onSaveSuccess = { [weak self] in
+            self?.loadProfileData()
+        }
+        navigationController?.pushViewController(editVC, animated: true)
+    }
     private func loadProfileData() {
         guard let token = TokenManager.shared.getAccessToken() else {
             print("Пользователь не авторизован: токен отсутствует в памяти")
@@ -241,6 +255,7 @@ final class ProfileViewController: UIViewController {
         networkService.fetchProfile(accessToken: token) { [weak self] result in
             switch result {
             case .success(let profile):
+                self?.currentProfileRawData = profile
                 self?.nameLabel.text = profile.name
                 self?.nicknameLabel.text = profile.nickname
                 self?.emailLabel.text = profile.email
@@ -305,6 +320,27 @@ extension ProfileViewController: UICollectionViewDataSource, UICollectionViewDel
         }
         return UICollectionViewCell()
     }
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        if collectionView == tagsCollectionView { return }
+        let selectedEvent: ProfileEvent
+        let userRole: EventRole
+        if collectionView == authorCollectionView {
+            selectedEvent = authorEvents[indexPath.item]
+            userRole = .author
+        } else if collectionView == participantCollectionView {
+            selectedEvent = participantEvents[indexPath.item]
+            userRole = .participant
+        } else {
+            return
+        }
+        let detailsVC = EventDetailsViewController(eventId: selectedEvent.id, role: userRole)
+        if let navigationController = self.navigationController {
+            navigationController.pushViewController(detailsVC, animated: true)
+        } else {
+            let nav = UINavigationController(rootViewController: detailsVC)
+            self.present(nav, animated: true)
+        }
+    }
 }
 
 class LeftAlignedFlowLayout: UICollectionViewFlowLayout {
@@ -325,4 +361,5 @@ class LeftAlignedFlowLayout: UICollectionViewFlowLayout {
         return attributes
     }
 }
+
 
