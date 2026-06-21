@@ -24,7 +24,7 @@ struct ProfileEvent: Decodable {
     let photo: PhotoProfileModel?
 }
 
-enum SportType: String {
+enum SportType: String, CaseIterable {
     case volleyball = "VOLLEYBALL"
     case basketball = "BASKETBALL"
     case ultimate = "ULTIMATE"
@@ -90,6 +90,12 @@ struct PhotoProfileModel: Decodable {
     let id: String
     let path: String
     let title: String
+}
+
+extension PhotoProfileModel {
+    var fullUrlString: String {
+        return "http://91.227.18.176/just4sport/api/photo/\(path)"
+    }
 }
 
 enum EventRole {

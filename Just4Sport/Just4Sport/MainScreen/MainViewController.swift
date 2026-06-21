@@ -71,7 +71,7 @@ class MainViewController: UIViewController {
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         cardsStackView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            titleLabel.topAnchor.constraint(equalTo: view.topAnchor, constant: 67),
+            titleLabel.topAnchor.constraint(equalTo: view.topAnchor, constant: 75),
             titleLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
             searchField.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 16),
             searchField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),

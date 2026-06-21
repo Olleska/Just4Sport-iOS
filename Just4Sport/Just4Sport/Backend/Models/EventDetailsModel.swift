@@ -17,6 +17,7 @@ struct EventDetailModel: Decodable {
     let author: AuthorModel?
     let comments: [CommentModel]?
     let teams: [ParticipantTeamModel]
+    let photo: PhotoModel?
 }
 
 struct AuthorModel: Decodable {

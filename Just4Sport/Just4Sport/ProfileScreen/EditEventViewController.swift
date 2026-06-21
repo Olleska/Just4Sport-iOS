@@ -1,4 +1,5 @@
 import UIKit
+import PhotosUI
 
 final class EditEventViewController: UIViewController {
     private let eventId: String
@@ -45,8 +46,6 @@ final class EditEventViewController: UIViewController {
     private lazy var closeRegistrationButton: UIButton = {
         let button = UIButton(type: .system)
         button.titleLabel?.font = .Bold.body
-        button.setTitleColor(UIColor(named: "greenColor"), for: .normal)
-        button.backgroundColor = UIColor(named: "greenColor")?.withAlphaComponent(0.2) ?? .systemRed
         button.layer.cornerRadius = 16
         button.addTarget(self, action: #selector(closeRegistrationButtonTapped), for: .touchUpInside)
         return button
@@ -103,6 +102,35 @@ final class EditEventViewController: UIViewController {
         button.addTarget(self, action: #selector(backButtonTapped), for: .touchUpInside)
         return button
     }()
+    private lazy var eventImageView: UIImageView = {
+        let imageView = UIImageView()
+        imageView.backgroundColor = .systemGray5
+        imageView.layer.cornerRadius = 16
+        imageView.clipsToBounds = true
+        imageView.contentMode = .scaleAspectFill
+        imageView.isUserInteractionEnabled = true
+        let tap = UITapGestureRecognizer(target: self, action: #selector(eventPhotoTapped))
+        imageView.addGestureRecognizer(tap)
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        return imageView
+    }()
+    private lazy var changePhotoLabel: UILabel = {
+        let label = UILabel()
+        label.text = "Изменить фото мероприятия"
+        label.font = .Bold.body
+        label.textColor = UIColor(named: "redColor") ?? .systemRed
+        label.textAlignment = .center
+        label.isUserInteractionEnabled = true
+        let tap = UITapGestureRecognizer(target: self, action: #selector(eventPhotoTapped))
+        label.addGestureRecognizer(tap)
+        label.translatesAutoresizingMaskIntoConstraints = false
+        return label
+    }()
+    private lazy var imageContainerView: UIView = {
+        let view = UIView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        return view
+    }()
     init(eventId: String, eventDetails: EventDetailModel) {
         self.eventId = eventId
         self.eventDetails = eventDetails
@@ -125,6 +153,9 @@ final class EditEventViewController: UIViewController {
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.addSubview(contentStackView)
         contentStackView.translatesAutoresizingMaskIntoConstraints = false
+        imageContainerView.addSubview(eventImageView)
+        imageContainerView.addSubview(changePhotoLabel)
+        contentStackView.addArrangedSubview(imageContainerView)
         contentStackView.addArrangedSubview(createFormRow(title: "Название мероприятия", inputView: nameTextField))
         contentStackView.addArrangedSubview(createFormRow(title: "Описание", inputView: descriptionTextView))
         contentStackView.addArrangedSubview(createFormRow(title: "Дата начала", inputView: startDateTextField))
@@ -159,6 +190,13 @@ final class EditEventViewController: UIViewController {
             contentStackView.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
             contentStackView.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor, constant: -16),
             contentStackView.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor),
+            imageContainerView.heightAnchor.constraint(equalToConstant: 180),
+            eventImageView.topAnchor.constraint(equalTo: imageContainerView.topAnchor),
+            eventImageView.centerXAnchor.constraint(equalTo: imageContainerView.centerXAnchor),
+            eventImageView.widthAnchor.constraint(equalToConstant: 200),
+            eventImageView.heightAnchor.constraint(equalToConstant: 140),
+            changePhotoLabel.topAnchor.constraint(equalTo: eventImageView.bottomAnchor, constant: 8),
+            changePhotoLabel.centerXAnchor.constraint(equalTo: imageContainerView.centerXAnchor),
             saveButton.heightAnchor.constraint(equalToConstant: 48),
             backButton.heightAnchor.constraint(equalToConstant: 48),
             deleteEventButton.heightAnchor.constraint(equalToConstant: 48),
@@ -179,15 +217,24 @@ final class EditEventViewController: UIViewController {
         startDatePicker.date = Date()
         endDatePicker.date = Date()
         deadlineDatePicker.date = Date()
+        if let photo = eventDetails.photo {
+            eventImageView.loadImage(from: photo.fullUrlString, placeholder: UIImage(named: "imageProfile"))
+        } else {
+            eventImageView.image = UIImage(named: "imageProfile")
+        }
         updateCloseRegistrationButton()
     }
     private func updateCloseRegistrationButton() {
         if eventDetails.eventStatus == "WILL_BE" {
             closeRegistrationButton.setTitle("Закрыть регистрацию", for: .normal)
+            closeRegistrationButton.setTitleColor(.white, for: .normal)
+            closeRegistrationButton.backgroundColor = UIColor(named: "greenColor")
             closeRegistrationButton.isEnabled = true
             closeRegistrationButton.layer.borderWidth = 0
         } else {
             closeRegistrationButton.setTitle("Регистрация уже закрыта", for: .normal)
+            closeRegistrationButton.setTitleColor(UIColor(named: "greenColor"), for: .normal)
+            closeRegistrationButton.backgroundColor = UIColor(named: "greenColor")?.withAlphaComponent(0.2)
             closeRegistrationButton.isEnabled = false
             closeRegistrationButton.layer.borderWidth = 0
         }
@@ -259,6 +306,14 @@ final class EditEventViewController: UIViewController {
                 }
             }
         }
+    }
+    @objc private func eventPhotoTapped() {
+        var config = PHPickerConfiguration()
+        config.filter = .images
+        config.selectionLimit = 1
+        let picker = PHPickerViewController(configuration: config)
+        picker.delegate = self
+        present(picker, animated: true)
     }
     @objc private func closeRegistrationButtonTapped() {
         closeRegistrationButton.isEnabled = false
@@ -386,17 +441,14 @@ final class EditEventViewController: UIViewController {
         let stack = UIStackView()
         stack.axis = .vertical
         stack.spacing = 6
-        
         let label = UILabel()
         label.text = title
         label.font = .SemiBold.body
         label.textColor = UIColor(named: "redColor")
-        
         stack.addArrangedSubview(label)
         stack.addArrangedSubview(inputView)
         return stack
     }
-    
     private static func makeTextField(placeholder: String, keyboardType: UIKeyboardType = .default) -> UITextField {
         let tf = UITextField()
         tf.placeholder = placeholder
@@ -423,4 +475,35 @@ final class EditEventViewController: UIViewController {
         formatter.timeZone = TimeZone(secondsFromGMT: 0)
         return formatter
     }()
+}
+
+extension EditEventViewController: PHPickerViewControllerDelegate {
+    func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
+        picker.dismiss(animated: true)
+        guard let provider = results.first?.itemProvider, provider.canLoadObject(ofClass: UIImage.self) else { return }
+        provider.loadObject(ofClass: UIImage.self) { [weak self] image, error in
+            guard let self = self, let uiImage = image as? UIImage else { return }
+            guard let imageData = uiImage.jpegData(compressionQuality: 0.7) else { return }
+            DispatchQueue.main.async {
+                self.eventImageView.image = uiImage
+            }
+            guard let token = TokenManager.shared.getAccessToken() else {
+                DispatchQueue.main.async {
+                    self.showErrorAlert(message: "Ошибка авторизации. Токен не найден.")
+                }
+                return
+            }
+            EventNetworkService.shared.uploadEventPhoto(id: self.eventId, accessToken: token, imageRawData: imageData) { result in
+                DispatchQueue.main.async {
+                    switch result {
+                    case .success:
+                        print("Фото мероприятия успешно загружено!")
+                    case .failure(let error):
+                        print("Ошибка отправки фото мероприятия: \(error.localizedDescription)")
+                        self.showErrorAlert(message: "Не удалось сохранить фото мероприятия на сервере.")
+                    }
+                }
+            }
+        }
+    }
 }

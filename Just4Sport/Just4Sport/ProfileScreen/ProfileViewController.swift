@@ -159,7 +159,7 @@ final class ProfileViewController: UIViewController {
         contentView.addSubview(participantCollectionView)
         contentView.addSubview(logoutButton)
         NSLayoutConstraint.activate([
-            headerStackView.topAnchor.constraint(equalTo: view.topAnchor, constant: 67),
+            headerStackView.topAnchor.constraint(equalTo: view.topAnchor, constant: 75),
             headerStackView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
             headerStackView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
             scrollView.topAnchor.constraint(equalTo: headerStackView.bottomAnchor, constant: 16),
@@ -238,11 +238,11 @@ final class ProfileViewController: UIViewController {
     @objc private func editButtonTapped() {
         guard let profileData = currentProfileRawData else { return }
         let editVC = EditProfileViewController(
-            userId: profileData.id!,
             name: profileData.name,
             nickname: profileData.nickname,
             email: profileData.email,
-            favoriteSports: profileData.favoriteSports
+            favoriteSports: profileData.favoriteSports,
+            photoPath: profileData.photo?.fullUrlString
         )
         editVC.onSaveSuccess = { [weak self] in
             self?.loadProfileData()
@@ -265,7 +265,12 @@ final class ProfileViewController: UIViewController {
                 self?.sportsTags = profile.favoriteSports.map { sportRawValue in
                     return SportType(rawValue: sportRawValue)?.visibleName ?? sportRawValue
                 }
-                //self?.avatarImageView.image = profile.photo
+                if let fullUrlString = profile.photo?.fullUrlString {
+                    self?.avatarImageView.loadImage(from: fullUrlString, placeholder: UIImage(named: "imageProfile"))
+                } else {
+                    self?.avatarImageView.image = UIImage(named: "imageProfile")
+                    self?.avatarImageView.tintColor = .systemGray4
+                }
                 self?.tagsCollectionView.reloadData()
                 self?.authorEvents = profile.authorEvents
                 self?.participantEvents = profile.participantEvents
@@ -365,5 +370,3 @@ class LeftAlignedFlowLayout: UICollectionViewFlowLayout {
         return attributes
     }
 }
-
-

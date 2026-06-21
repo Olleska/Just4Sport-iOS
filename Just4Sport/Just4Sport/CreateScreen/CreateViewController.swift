@@ -1,10 +1,7 @@
 import UIKit
 
 class CreateViewController: UIViewController {
-    // 1. В самом верху класса объявляем сервис
     private let networkService = EventNetworkService.shared
-
-    // 2. Добавляем хелперы для конвертации UI-строк в серверные энумы
     private func getSportBackendKey(for UIValue: String) -> String {
         switch UIValue {
         case "Волейбол": return "VOLLEYBALL"
@@ -15,7 +12,6 @@ class CreateViewController: UIViewController {
         default: return "VOLLEYBALL"
         }
     }
-
     private func getTypeBackendKey(for UIValue: String) -> String {
         switch UIValue {
         case "Тренировка": return "TRAINING"
@@ -24,7 +20,6 @@ class CreateViewController: UIViewController {
         default: return "TRAINING"
         }
     }
-
     private func getLevelBackendKey(for UIValue: String) -> String {
         switch UIValue {
         case "Новички": return "START"
@@ -33,20 +28,13 @@ class CreateViewController: UIViewController {
         default: return "START"
         }
     }
-
-    // 3. Хелпер для дат. Если твои компоненты возвращают строку (например "18 июня 2026, 22:04"),
-    // нужно превратить её в ISO8601 string.
-    // (Примечание: если внутри dateSelectComponent у тебя хранится чистый Date, лучше вытащить его напрямую!)
     private func formatToISO8601(dateString: String) -> String {
         let inputFormatter = DateFormatter()
-        inputFormatter.dateFormat = "dd MMMM yyyy, HH:mm" // Подставь формат, который генерирует твой пикер
+        inputFormatter.dateFormat = "dd MMMM yyyy, HH:mm"
         inputFormatter.locale = Locale(identifier: "ru_RU")
-        
         guard let date = inputFormatter.date(from: dateString) else {
-            // Фолбек: если не распарсилось, возвращаем текущую дату в ISO формате
             return ISO8601DateFormatter().string(from: Date())
         }
-        
         let isoFormatter = ISO8601DateFormatter()
         isoFormatter.formatOptions = [.withInternetDateTime]
         return isoFormatter.string(from: date)
@@ -195,7 +183,7 @@ class CreateViewController: UIViewController {
         deadlineDateEvent.translatesAutoresizingMaskIntoConstraints = false
         createButton.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            titleLabel.topAnchor.constraint(equalTo: view.topAnchor, constant: 67),
+            titleLabel.topAnchor.constraint(equalTo: view.topAnchor, constant: 75),
             titleLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
             scrollView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 16),
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
@@ -259,7 +247,6 @@ class CreateViewController: UIViewController {
         let isTextValid = !nameText.isEmpty && !placeText.isEmpty && !costText.isEmpty
         let isChosenFieldsValid = isSportSelected && isSkillSelected && isTypeSelected
         let isEnabled = isDateValid && isTextValid && isChosenFieldsValid
-
         createButton.isUserInteractionEnabled = isEnabled
         if !isEnabled {
             createButton.backgroundColor = UIColor(named: "redColor")?.withAlphaComponent(0.5)
@@ -314,7 +301,6 @@ class CreateViewController: UIViewController {
             }
         }
     }
-
     private func clearAllFields() {
         nameEvent.clear()
         placeEvent.clear()
