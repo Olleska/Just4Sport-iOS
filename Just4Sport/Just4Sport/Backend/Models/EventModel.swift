@@ -96,6 +96,12 @@ struct PhotoModel: Decodable {
     let title: String
 }
 
+extension PhotoModel {
+    var fullUrlString: String {
+        return "http://91.227.18.176/just4sport/api/photo/\(path)"
+    }
+}
+
 struct EventCreateModel: Encodable {
     let name: String
     let description: String?
@@ -122,4 +128,15 @@ struct EventFilterParameters {
     var costEnd: Int?
     var dateStart: String?
     var dateEnd: String?
+}
+
+struct EditEventRequest: Encodable {
+    let name: String
+    let description: String
+    let dateStart: String
+    let dateEnd: String
+    let place: String
+    let cost: Int
+    let deadline: String
+    let teamsNumber: Int
 }

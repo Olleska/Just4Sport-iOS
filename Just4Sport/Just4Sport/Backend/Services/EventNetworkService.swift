@@ -240,4 +240,138 @@ class EventNetworkService {
             }
         }.resume()
     }
+    func updateEventDetails(id: String, requestModel: EditEventRequest, completion: @escaping (Result<Void, Error>) -> Void) {
+        guard let url = URL(string: "\(baseUrl)/author-events/\(id)") else {
+            completion(.failure(NSError(domain: "Invalid URL", code: -1)))
+            return
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "PUT"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        if let token = TokenManager.shared.getAccessToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        do {
+            let encoder = JSONEncoder()
+            request.httpBody = try encoder.encode(requestModel)
+        } catch {
+            completion(.failure(error))
+            return
+        }
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                completion(.failure(error))
+                return
+            }
+            if let httpResponse = response as? HTTPURLResponse, !(200...299).contains(httpResponse.statusCode) {
+                let serverError = NSError(domain: "Server Error", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: "Код ответа: \(httpResponse.statusCode)"])
+                completion(.failure(serverError))
+                return
+            }
+            
+            completion(.success(()))
+        }.resume()
+    }
+    func closeRegistration(id: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        guard let url = URL(string: "\(baseUrl)/participants/\(id)/close") else {
+            let urlError = NSError(domain: "Network", code: -1, userInfo: [NSLocalizedDescriptionKey: "Неверный URL"])
+            DispatchQueue.main.async { completion(.failure(urlError)) }
+            return
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "PUT"
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        if let token = TokenManager.shared.getAccessToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                DispatchQueue.main.async { completion(.failure(error)) }
+                return
+            }
+            if let httpResponse = response as? HTTPURLResponse {
+                if (200...299).contains(httpResponse.statusCode) {
+                    DispatchQueue.main.async { completion(.success(())) }
+                } else {
+                    let serverMessage = data != nil ? (String(data: data!, encoding: .utf8) ?? "") : ""
+                    print("Лог ошибки бэкенда при удалении мероприятия: \(serverMessage) | Статус: \(httpResponse.statusCode)")
+                    let errorDescription = !serverMessage.isEmpty ? serverMessage : "Ошибка сервера. Статус: \(httpResponse.statusCode)"
+                    let serverError = NSError(
+                        domain: "Network",
+                        code: httpResponse.statusCode,
+                        userInfo: [NSLocalizedDescriptionKey: errorDescription]
+                    )
+                    DispatchQueue.main.async { completion(.failure(serverError)) }
+                }
+            }
+        }.resume()
+    }
+    func deleteEvent(id: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        guard let url = URL(string: "\(baseUrl)/author-events/\(id)") else {
+            let urlError = NSError(domain: "Network", code: -1, userInfo: [NSLocalizedDescriptionKey: "Неверный URL"])
+            DispatchQueue.main.async { completion(.failure(urlError)) }
+            return
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "DELETE"
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        if let token = TokenManager.shared.getAccessToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                DispatchQueue.main.async { completion(.failure(error)) }
+                return
+            }
+            if let httpResponse = response as? HTTPURLResponse {
+                if (200...299).contains(httpResponse.statusCode) {
+                    DispatchQueue.main.async { completion(.success(())) }
+                } else {
+                    let serverMessage = data != nil ? (String(data: data!, encoding: .utf8) ?? "") : ""
+                    print("Лог ошибки бэкенда при удалении мероприятия: \(serverMessage) | Статус: \(httpResponse.statusCode)")
+                    let errorDescription = !serverMessage.isEmpty ? serverMessage : "Ошибка сервера. Статус: \(httpResponse.statusCode)"
+                    let serverError = NSError(
+                        domain: "Network",
+                        code: httpResponse.statusCode,
+                        userInfo: [NSLocalizedDescriptionKey: errorDescription]
+                    )
+                    DispatchQueue.main.async { completion(.failure(serverError)) }
+                }
+            }
+        }.resume()
+    }
+    func finishEvent(id: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        let urlString = "\(baseUrl)/author-events/\(id)/finish"
+        guard let url = URL(string: urlString) else { return }
+        var request = URLRequest(url: url)
+        request.httpMethod = "PUT"
+        if let token = TokenManager.shared.getAccessToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        URLSession.shared.dataTask(with: request) { _, response, error in
+            if let error = error {
+                completion(.failure(error))
+                return
+            }
+            completion(.success(()))
+        }.resume()
+    }
+    func cancelEvent(id: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        let urlString = "\(baseUrl)/author-events/\(id)/cancel"
+        guard let url = URL(string: urlString) else { return }
+        var request = URLRequest(url: url)
+        request.httpMethod = "PUT"
+        if let token = TokenManager.shared.getAccessToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        URLSession.shared.dataTask(with: request) { _, response, error in
+            if let error = error {
+                completion(.failure(error))
+                return
+            }
+            completion(.success(()))
+        }.resume()
+    }
 }

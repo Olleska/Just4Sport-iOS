@@ -28,13 +28,15 @@ class MainViewController: UIViewController {
     }()
     private lazy var filterButton: UIButton = {
         let button = UIButton(type: .system)
-        button.setTitle("Фильтр", for: .normal)
-        button.setTitleColor(.white, for: .normal)
+        //button.setTitle("Фильтр", for: .normal)
+        button.setImage(UIImage(named: "penImage"), for: .normal)
+        button.tintColor = .white
         button.titleLabel?.font = .Bold.body
         button.backgroundColor = UIColor(named: "redColor")
         button.layer.cornerRadius = 16
-        button.contentHorizontalAlignment = .leading
-        button.contentEdgeInsets = UIEdgeInsets(top: 0, left: 16, bottom: 0, right: 0)
+        button.contentHorizontalAlignment = .center // Центрируем контент по горизонтали
+        button.contentVerticalAlignment = .center   // Центрируем контент по вертикали
+        button.contentEdgeInsets = .zero
         button.addTarget(self, action: #selector(filterButtonTapped), for: .touchUpInside)
         return button
     }()
@@ -73,12 +75,12 @@ class MainViewController: UIViewController {
             titleLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
             searchField.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 16),
             searchField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
-            searchField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
+            searchField.widthAnchor.constraint(equalToConstant: 270),
             searchField.heightAnchor.constraint(equalToConstant: 44),
-            filterButton.topAnchor.constraint(equalTo: searchField.bottomAnchor, constant: 12),
-            filterButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
+            filterButton.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 16),
+            filterButton.leadingAnchor.constraint(equalTo: searchField.trailingAnchor, constant: 10),
             filterButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
-            filterButton.heightAnchor.constraint(equalToConstant: 48),
+            filterButton.heightAnchor.constraint(equalToConstant: 44),
             scrollView.topAnchor.constraint(equalTo: filterButton.bottomAnchor, constant: 12),
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
@@ -128,6 +130,7 @@ class MainViewController: UIViewController {
     private func appendNewCards(_ newEvents: [EventModel]) {
         for event in newEvents {
             let card = EventCardComponent()
+            let imageUrlString = event.photo?.fullUrlString
             card.configure(
                 title: event.name,
                 start: event.visibleStartDate,
@@ -135,7 +138,8 @@ class MainViewController: UIViewController {
                 type: event.visibleEventName,
                 level: event.visibleSkillLevel,
                 sport: event.visibleSport,
-                status: event.visibleEventStatus
+                status: event.visibleEventStatus,
+                imageUrlString: imageUrlString
             )
             card.onDetailsTap = { [weak self] in
                 guard let self = self else { return }
@@ -157,6 +161,7 @@ extension MainViewController: UIScrollViewDelegate {
         }
     }
 }
+
 extension MainViewController: FilterViewControllerDelegate {
     func didApplyFilters(_ filters: EventFilterParameters) {
         self.filterParameters.sport = filters.sport
@@ -170,5 +175,47 @@ extension MainViewController: FilterViewControllerDelegate {
         self.filterParameters.dateStart = filters.dateStart
         self.filterParameters.dateEnd = filters.dateEnd
         resetAndReload()
+    }
+}
+
+extension UIImageView {
+    func loadImage(from urlString: String?, placeholder: UIImage? = nil) {
+        self.image = placeholder
+        guard let urlString = urlString, let url = URL(string: urlString) else {
+            print("Некорректная строка URL: \(urlString ?? "nil")")
+            return
+        }
+        let currentUrlString = urlString
+        self.accessibilityIdentifier = currentUrlString
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        if let token = TokenManager.shared.getAccessToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+            guard let self = self else { return }
+            if let error = error {
+                print("Ошибка сети при загрузке картинки: \(error.localizedDescription)")
+                return
+            }
+            if let httpResponse = response as? HTTPURLResponse {
+                if !(200...299).contains(httpResponse.statusCode) {
+                    print("Сервер вернул код ошибки \(httpResponse.statusCode) для URL: \(urlString)")
+                    return
+                }
+            }
+            guard let data = data, let downloadedImage = UIImage(data: data) else {
+                if let text = String(data: data ?? Data(), encoding: .utf8) {
+                    print("Текст ответа сервера (первые 100 символов): \(String(text.prefix(100)))")
+                }
+                return
+            }
+            DispatchQueue.main.async {
+                if self.accessibilityIdentifier == currentUrlString {
+                    self.image = downloadedImage
+                    self.backgroundColor = .clear
+                }
+            }
+        }.resume()
     }
 }

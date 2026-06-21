@@ -16,18 +16,13 @@ struct EventDetailModel: Decodable {
     let teamsNumber: Int?
     let author: AuthorModel?
     let comments: [CommentModel]?
-    let teams: [TeamModel]
+    let teams: [ParticipantTeamModel]
 }
 
 struct AuthorModel: Decodable {
     let id: String
     let name: String
     let nickname: String?
-}
-
-struct TeamModel: Codable {
-    let id: String
-    let name: String
 }
 
 struct CommentModel: Decodable {

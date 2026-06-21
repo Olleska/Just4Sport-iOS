@@ -1,9 +1,9 @@
 import UIKit
 
 final class EventDetailsViewController: UIViewController {
-    
     private let eventId: String
     private let role: EventRole
+    private let currentUserNickname: String
     private var eventDetails: EventDetailModel?
     private var isCaptain: Bool = false
     private let activityIndicator: UIActivityIndicatorView = {
@@ -59,7 +59,6 @@ final class EventDetailsViewController: UIViewController {
         stack.distribution = .fill
         return stack
     }()
-    
     private let secondRowTagsStackView: UIStackView = {
         let stack = UIStackView()
         stack.axis = .horizontal
@@ -68,7 +67,6 @@ final class EventDetailsViewController: UIViewController {
         stack.distribution = .fill
         return stack
     }()
-    
     private let descriptionStackView: UIStackView = {
         let stack = UIStackView()
         stack.axis = .vertical
@@ -140,7 +138,7 @@ final class EventDetailsViewController: UIViewController {
     }()
     private let teamsTitleLabel: UILabel = {
         let label = UILabel()
-        label.text = "Участвующие команды и составы"
+        label.text = "Участвующие команды"
         label.font = .Bold.title3
         label.textColor = .black
         return label
@@ -184,14 +182,12 @@ final class EventDetailsViewController: UIViewController {
         label.textColor = .black
         return label
     }()
-    
     private let placeValueLabel: UILabel = {
         let label = UILabel()
         label.font = .Regular.body
         label.textColor = .black
         return label
     }()
-    
     private lazy var backButton: UIButton = {
         let button = UIButton(type: .system)
         button.setTitle("Назад в профиль", for: .normal)
@@ -207,16 +203,16 @@ final class EventDetailsViewController: UIViewController {
     
     private lazy var cancelApplicationButton: UIButton = {
         let button = UIButton(type: .system)
-        //button.setTitle("Отозвать заявку команды", for: .normal)
         button.titleLabel?.font = .Bold.body
-        //button.backgroundColor = UIColor(named: "redColor") ?? .systemRed
         button.layer.cornerRadius = 16
         button.addTarget(self, action: #selector(cancelApplicationTapped), for: .touchUpInside)
         return button
     }()
-    init(eventId: String, role: EventRole) {
+    private lazy var actionButton: UIButton = cancelApplicationButton
+    init(eventId: String, role: EventRole, currentUserNickname: String) {
         self.eventId = eventId
         self.role = role
+        self.currentUserNickname = currentUserNickname
         super.init(nibName: nil, bundle: nil)
     }
     required init?(coder: NSCoder) {
@@ -230,7 +226,6 @@ final class EventDetailsViewController: UIViewController {
         super.viewDidLoad()
         view.backgroundColor = .white
         setupLayout()
-        configureActionButtonsByRole()
         loadData()
     }
     override func viewWillDisappear(_ animated: Bool) {
@@ -240,24 +235,24 @@ final class EventDetailsViewController: UIViewController {
     private func configureActionButtonsByRole() {
         switch role {
         case .author:
-            cancelApplicationButton.setTitle("Управлять мероприятием", for: .normal)
-            cancelApplicationButton.backgroundColor = UIColor(named: "redColor") ?? .systemRed
-            cancelApplicationButton.tintColor = .white
-            cancelApplicationButton.isHidden = false
-            cancelApplicationButton.isUserInteractionEnabled = true
+            actionButton.setTitle("Управлять мероприятием", for: .normal)
+            actionButton.backgroundColor = UIColor(named: "redColor") ?? .systemRed
+            actionButton.tintColor = .white
+            actionButton.isHidden = false
+            actionButton.isUserInteractionEnabled = true
         case .participant:
             if isCaptain {
-                cancelApplicationButton.setTitle("Отозвать заявку команды", for: .normal)
-                cancelApplicationButton.tintColor = .white
-                cancelApplicationButton.backgroundColor = UIColor(named: "redColor") ?? .systemRed
-                cancelApplicationButton.isHidden = false
-                cancelApplicationButton.isUserInteractionEnabled = true
+                actionButton.setTitle("Отозвать заявку команды", for: .normal)
+                actionButton.tintColor = .white
+                actionButton.backgroundColor = UIColor(named: "redColor") ?? .systemRed
+                actionButton.isHidden = false
+                actionButton.isUserInteractionEnabled = true
             } else {
-                cancelApplicationButton.setTitle("Вы участвуете в мероприятии", for: .normal)
-                cancelApplicationButton.tintColor = UIColor(named: "redColor") ?? .systemRed
-                cancelApplicationButton.backgroundColor = UIColor(named: "redColor")?.withAlphaComponent(0.2) ?? .systemRed
-                cancelApplicationButton.isHidden = false
-                cancelApplicationButton.isUserInteractionEnabled = false
+                actionButton.setTitle("Вы участвуете в мероприятии", for: .normal)
+                actionButton.tintColor = UIColor(named: "redColor") ?? .systemRed
+                actionButton.backgroundColor = UIColor(named: "redColor")?.withAlphaComponent(0.2) ?? .systemRed
+                actionButton.isHidden = false
+                actionButton.isUserInteractionEnabled = false
             }
         }
     }
@@ -268,14 +263,31 @@ final class EventDetailsViewController: UIViewController {
             DispatchQueue.main.async {
                 guard let self = self else { return }
                 self.activityIndicator.stopAnimating()
-                
                 switch result {
                 case .success(let details):
                     self.eventDetails = details
                     self.configureUI(with: details)
+                    var userIsCaptainOfAnyTeam = false
+                    var teamsStringBuilder = ""
+                    let teams = details.teams
+                    if !teams.isEmpty {
+                        for team in teams {
+                            teamsStringBuilder += "\(team.name)"
+                            teamsStringBuilder += "\n"
+                        }
+                        
+                        let finalFormat = teamsStringBuilder.trimmingCharacters(in: .whitespacesAndNewlines)
+                        self.teamsValueLabel.text = finalFormat
+                    } else {
+                        self.teamsValueLabel.text = "Команд пока нет"
+                    }
+                    self.isCaptain = userIsCaptainOfAnyTeam
+                    self.configureActionButtonsByRole()
+                    
                     UIView.animate(withDuration: 0.3) {
                         self.scrollView.alpha = 1
                     }
+                    
                 case .failure(let error):
                     self.descriptionTextLabel.text = "Не удалось загрузить данные мероприятия."
                     self.scrollView.alpha = 1
@@ -284,7 +296,35 @@ final class EventDetailsViewController: UIViewController {
             }
         }
     }
-    
+    @objc private func cancelApplicationTapped() {
+        switch role {
+        case .author:
+            openManagementScreen()
+        case .participant:
+            if isCaptain {
+                showCancelApplicationAlert()
+            }
+        }
+    }
+    private func showCancelApplicationAlert() {
+        let alert = UIAlertController(
+            title: "Отзыв заявки",
+            message: "Вы уверены, что хотите отозвать заявку вашей команды на участие?",
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "Отмена", style: .cancel))
+        alert.addAction(UIAlertAction(title: "Да, отозвать", style: .destructive) { [weak self] _ in
+            self?.performDeleteApplicationRequest()
+        })
+        present(alert, animated: true)
+    }
+    private func openManagementScreen() {
+        guard let eventDetails = eventDetails else {
+            return
+        }
+        let editVC = EditEventViewController(eventId: eventId, eventDetails: eventDetails)
+        navigationController?.pushViewController(editVC, animated: true)
+    }
     private func configureUI(with details: EventDetailModel) {
         titleLabel.text = details.name
         dateLabel.text = "Начало: \(details.visibleStartDate)\nКонец:  \(details.visibleEndDate)"
@@ -294,7 +334,6 @@ final class EventDetailsViewController: UIViewController {
         teamsValueLabel.text = details.visibleTeamsList
         firstRowTagsStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
         secondRowTagsStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
-        
         let statusPill = createPillBadge(
             text: details.visibleEventStatus,
             backgroundColor: UIColor(named: "yellowColor")?.withAlphaComponent(0.2) ?? .systemYellow.withAlphaComponent(0.2),
@@ -337,19 +376,16 @@ final class EventDetailsViewController: UIViewController {
             authorNameLabel.text = authorName
         }
     }
-    
     private func createPillBadge(text: String, backgroundColor: UIColor, textColor: UIColor) -> UIView {
         let container = UIView()
         container.backgroundColor = backgroundColor
         container.layer.cornerRadius = 10
         container.clipsToBounds = true
-        
         let label = UILabel()
         label.text = text
         label.font = .Regular.body
         label.textColor = textColor
         label.translatesAutoresizingMaskIntoConstraints = false
-        
         container.addSubview(label)
         NSLayoutConstraint.activate([
             label.topAnchor.constraint(equalTo: container.topAnchor, constant: 6),
@@ -424,22 +460,10 @@ final class EventDetailsViewController: UIViewController {
     @objc private func backButtonTapped() {
         navigationController?.popViewController(animated: true)
     }
-    @objc private func cancelApplicationTapped() {
-        let alert = UIAlertController(
-            title: "Отзыв заявки",
-            message: "Вы уверены, что хотите отозвать заявку вашей команды на участие?",
-            preferredStyle: .alert
-        )
-        alert.addAction(UIAlertAction(title: "Отмена", style: .cancel))
-        alert.addAction(UIAlertAction(title: "Да, отозвать", style: .destructive) { [weak self] _ in
-            self?.performDeleteApplicationRequest()
-        })
-        present(alert, animated: true)
-    }
     private func performDeleteApplicationRequest() {
         cancelApplicationButton.isEnabled = false
         activityIndicator.startAnimating()
-        print("Вызов DELETE-запроса для удаления заявки на ивент: \(eventId)")
+        print("Вызов запроса для удаления заявки на ивент: \(eventId)")
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
             self?.activityIndicator.stopAnimating()
             self?.cancelApplicationButton.isEnabled = true

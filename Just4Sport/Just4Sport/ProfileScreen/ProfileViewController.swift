@@ -142,6 +142,9 @@ final class ProfileViewController: UIViewController {
         super.viewDidLoad()
         view.backgroundColor = .white
         setupLayout()
+    }
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
         loadProfileData()
     }
     private func setupLayout() {
@@ -333,7 +336,8 @@ extension ProfileViewController: UICollectionViewDataSource, UICollectionViewDel
         } else {
             return
         }
-        let detailsVC = EventDetailsViewController(eventId: selectedEvent.id, role: userRole)
+        let userNickname = currentProfileRawData?.nickname ?? ""
+        let detailsVC = EventDetailsViewController(eventId: selectedEvent.id, role: userRole, currentUserNickname: userNickname)
         if let navigationController = self.navigationController {
             navigationController.pushViewController(detailsVC, animated: true)
         } else {

@@ -84,8 +84,8 @@ final class EventCardComponent: UIView {
         label.font = .Regular.body
         label.layer.cornerRadius = 8
         label.clipsToBounds = true
-        label.textColor = UIColor(named: "yellowColor")
-        label.backgroundColor = UIColor(named: "yellowColor")?.withAlphaComponent(0.2)
+        label.textColor = .white
+        label.backgroundColor = UIColor(named: "yellowColor")?.withAlphaComponent(0.7)
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
     }()
@@ -121,7 +121,7 @@ final class EventCardComponent: UIView {
     required init?(coder: NSCoder) {
         fatalError("cat")
     }
-    func configure(title: String, start: String, end: String, type: String, level: String, sport: String, status: String, image: UIImage? = nil) {
+    func configure(title: String, start: String, end: String, type: String, level: String, sport: String, status: String, imageUrlString: String?) {
         titleLabel.text = title
         eventTypeLabel.text = type
         skillLevelLabel.text = level
@@ -132,9 +132,10 @@ final class EventCardComponent: UIView {
         } else {
             dateLabel.text = "\(start) — \(end)"
         }
-        if let image = image {
-            eventImageView.image = image
+        eventImageView.image = nil
+        if let urlStr = imageUrlString, !urlStr.isEmpty {
             eventImageView.backgroundColor = .clear
+            eventImageView.loadImage(from: urlStr, placeholder: nil)
         } else {
             eventImageView.image = nil
             eventImageView.backgroundColor = UIColor(named: "grayColor")?.withAlphaComponent(0.2)
