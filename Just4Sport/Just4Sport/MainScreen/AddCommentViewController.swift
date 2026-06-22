@@ -94,10 +94,8 @@ class AddCommentViewController: UIViewController {
         
         buttonsStackView.addArrangedSubview(cancelButton)
         buttonsStackView.addArrangedSubview(submitButton)
-        
-        // Используем приоритеты, чтобы карточка идеально прыгала над клавиатурой
         let centerYConstraint = containerView.centerYAnchor.constraint(equalTo: view.centerYAnchor)
-        centerYConstraint.priority = .defaultLow // Разрешаем сжиматься/сдвигаться вверх
+        centerYConstraint.priority = .defaultLow
         
         NSLayoutConstraint.activate([
             dimmingBackgroundView.topAnchor.constraint(equalTo: view.topAnchor),
@@ -108,7 +106,6 @@ class AddCommentViewController: UIViewController {
             containerView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
             containerView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
             centerYConstraint,
-            // Магия: держит окно над клавиатурой на расстоянии 20pt
             containerView.bottomAnchor.constraint(lessThanOrEqualTo: view.keyboardLayoutGuide.topAnchor, constant: -20),
             
             titleLabel.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 20),
@@ -118,7 +115,7 @@ class AddCommentViewController: UIViewController {
             commentTextView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 16),
             commentTextView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 20),
             commentTextView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -20),
-            commentTextView.heightAnchor.constraint(equalToConstant: 140), // Огромное текстовое поле
+            commentTextView.heightAnchor.constraint(equalToConstant: 140),
             
             buttonsStackView.topAnchor.constraint(equalTo: commentTextView.bottomAnchor, constant: 20),
             buttonsStackView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 20),
@@ -152,12 +149,10 @@ class AddCommentViewController: UIViewController {
             case .success:
                 self.commentTextView.resignFirstResponder()
                 self.dismiss(animated: true) {
-                    // Передаем сигнал наверх, что нужно обновить список комментов
                     self.onCommentSubmitted?()
                 }
             case .failure(let error):
                 print("Не удалось отправить комментарий через модалку: \(error.localizedDescription)")
-                // Закрываем окно, даже если ошибка, чтобы разблокировать интерфейс пользователю
                 self.commentTextView.resignFirstResponder()
                 self.dismiss(animated: true) {
                     self.onCommentSubmitted?()

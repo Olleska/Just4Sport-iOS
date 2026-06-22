@@ -260,38 +260,71 @@ final class EventDetailsViewController: UIViewController {
         activityIndicator.startAnimating()
         scrollView.alpha = 0
         EventNetworkService.shared.fetchEventDetails(id: eventId) { [weak self] result in
-            DispatchQueue.main.async {
-                guard let self = self else { return }
-                self.activityIndicator.stopAnimating()
-                switch result {
-                case .success(let details):
-                    self.eventDetails = details
-                    self.configureUI(with: details)
-                    var userIsCaptainOfAnyTeam = false
-                    var teamsStringBuilder = ""
-                    let teams = details.teams
-                    if !teams.isEmpty {
-                        for team in teams {
-                            teamsStringBuilder += "\(team.name)"
-                            teamsStringBuilder += "\n"
+            guard let self = self else { return }
+            switch result {
+            case .success(let details):
+                EventNetworkService.shared.fetchEventParticipants(id: self.eventId) { participantsResult in
+                    DispatchQueue.main.async {
+                        self.activityIndicator.stopAnimating()
+                        var finalDetails = details
+                        switch participantsResult {
+                        case .success(let fullTeams):
+                            finalDetails = EventDetailModel(
+                                id: details.id,
+                                name: details.name,
+                                cost: details.cost,
+                                dateStart: details.dateStart,
+                                dateEnd: details.dateEnd,
+                                deadline: details.deadline,
+                                description: details.description,
+                                eventStatus: details.eventStatus,
+                                eventType: details.eventType,
+                                skillLevel: details.skillLevel,
+                                sport: details.sport,
+                                place: details.place,
+                                teamsNumber: details.teamsNumber,
+                                author: details.author,
+                                comments: details.comments,
+                                teams: fullTeams,
+                                photo: details.photo
+                            )
+                        case .failure(let error):
+                            print("Не удалось загрузить детальных участников, работаем на базовых: \(error.localizedDescription)")
                         }
-                        
-                        let finalFormat = teamsStringBuilder.trimmingCharacters(in: .whitespacesAndNewlines)
-                        self.teamsValueLabel.text = finalFormat
-                    } else {
-                        self.teamsValueLabel.text = "Команд пока нет"
+                        self.eventDetails = finalDetails
+                        self.configureUI(with: finalDetails)
+                        var userIsCaptainOfAnyTeam = false
+                        var teamsStringBuilder = ""
+                        let teams = finalDetails.teams
+                        if !teams.isEmpty {
+                            for team in teams {
+                                teamsStringBuilder += "\(team.name)\n"
+                                if let captainNickname = team.captain?.nickname {
+                                    let cleanTeamNickname = captainNickname.replacingOccurrences(of: "@", with: "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                                    let cleanUserNickname = self.currentUserNickname.replacingOccurrences(of: "@", with: "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                                    if cleanTeamNickname == cleanUserNickname {
+                                        userIsCaptainOfAnyTeam = true
+                                    }
+                                }
+                            }
+                            let finalFormat = teamsStringBuilder.trimmingCharacters(in: .whitespacesAndNewlines)
+                            self.teamsValueLabel.text = finalFormat
+                        } else {
+                            self.teamsValueLabel.text = "Команд пока нет"
+                        }
+                        self.isCaptain = userIsCaptainOfAnyTeam
+                        self.configureActionButtonsByRole()
+                        UIView.animate(withDuration: 0.3) {
+                            self.scrollView.alpha = 1
+                        }
                     }
-                    self.isCaptain = userIsCaptainOfAnyTeam
-                    self.configureActionButtonsByRole()
-                    
-                    UIView.animate(withDuration: 0.3) {
-                        self.scrollView.alpha = 1
-                    }
-                    
-                case .failure(let error):
+                }
+            case .failure(let error):
+                DispatchQueue.main.async {
+                    self.activityIndicator.stopAnimating()
                     self.descriptionTextLabel.text = "Не удалось загрузить данные мероприятия."
                     self.scrollView.alpha = 1
-                    print("Ошибка при получении деталей в профиле: \(error.localizedDescription)")
+                    print("Ошибка при получении деталей: \(error.localizedDescription)")
                 }
             }
         }
@@ -302,21 +335,9 @@ final class EventDetailsViewController: UIViewController {
             openManagementScreen()
         case .participant:
             if isCaptain {
-                showCancelApplicationAlert()
+                performDeleteApplicationRequest()
             }
         }
-    }
-    private func showCancelApplicationAlert() {
-        let alert = UIAlertController(
-            title: "Отзыв заявки",
-            message: "Вы уверены, что хотите отозвать заявку вашей команды на участие?",
-            preferredStyle: .alert
-        )
-        alert.addAction(UIAlertAction(title: "Отмена", style: .cancel))
-        alert.addAction(UIAlertAction(title: "Да, отозвать", style: .destructive) { [weak self] _ in
-            self?.performDeleteApplicationRequest()
-        })
-        present(alert, animated: true)
     }
     private func openManagementScreen() {
         guard let eventDetails = eventDetails else {
@@ -436,21 +457,17 @@ final class EventDetailsViewController: UIViewController {
         NSLayoutConstraint.activate([
             activityIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             activityIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-            
             backButton.heightAnchor.constraint(equalToConstant: 44),
             cancelHeightConstraint,
-            
             scrollView.topAnchor.constraint(equalTo: view.topAnchor, constant: 58),
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
             scrollView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -16),
-            
             contentStackView.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
             contentStackView.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor),
             contentStackView.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
             contentStackView.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
             contentStackView.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor),
-            
             dateLabel.topAnchor.constraint(equalTo: infoContainerView.topAnchor, constant: 16),
             dateLabel.leadingAnchor.constraint(equalTo: infoContainerView.leadingAnchor, constant: 16),
             dateLabel.trailingAnchor.constraint(equalTo: infoContainerView.trailingAnchor, constant: -16),
@@ -463,11 +480,18 @@ final class EventDetailsViewController: UIViewController {
     private func performDeleteApplicationRequest() {
         cancelApplicationButton.isEnabled = false
         activityIndicator.startAnimating()
-        print("Вызов запроса для удаления заявки на ивент: \(eventId)")
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-            self?.activityIndicator.stopAnimating()
-            self?.cancelApplicationButton.isEnabled = true
-            self?.navigationController?.popViewController(animated: true)
+        EventNetworkService.shared.deleteTeamApplication(id: eventId) { [weak self] result in
+            guard let self = self else { return }
+            DispatchQueue.main.async {
+                self.activityIndicator.stopAnimating()
+                self.cancelApplicationButton.isEnabled = true
+                switch result {
+                case .success:
+                    self.navigationController?.popViewController(animated: true)
+                case .failure(let error):
+                    print("Ошибка при отзыве заявки: \(error.localizedDescription)")
+                }
+            }
         }
     }
 }

@@ -62,7 +62,7 @@ final class EditEventViewController: UIViewController {
     }()
     private lazy var finishEventButton: UIButton = {
         let button = UIButton(type: .system)
-        button.setTitle("Завершить мероприятие", for: .normal)
+        button.setTitle("Завершить", for: .normal)
         button.titleLabel?.font = .Bold.body
         button.setTitleColor(UIColor(named: "yellowColor"), for: .normal)
         button.backgroundColor = UIColor(named: "yellowColor")?.withAlphaComponent(0.2) ?? .systemGray5
@@ -72,12 +72,22 @@ final class EditEventViewController: UIViewController {
     }()
     private lazy var cancelEventButton: UIButton = {
         let button = UIButton(type: .system)
-        button.setTitle("Отменить мероприятие", for: .normal)
+        button.setTitle("Отменить", for: .normal)
         button.titleLabel?.font = .Bold.body
         button.setTitleColor(UIColor(named: "yellowColor"), for: .normal)
         button.backgroundColor = UIColor(named: "yellowColor")?.withAlphaComponent(0.2) ?? .systemGray5
         button.layer.cornerRadius = 16
         button.addTarget(self, action: #selector(cancelEventButtonTapped), for: .touchUpInside)
+        return button
+    }()
+    private lazy var createGameButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.setTitle("Создать игры", for: .normal)
+        button.titleLabel?.font = .Bold.body
+        button.setTitleColor(.white, for: .normal)
+        button.backgroundColor = UIColor(named: "eventTypeColor") ?? .systemGray5
+        button.layer.cornerRadius = 16
+        button.addTarget(self, action: #selector(createGameButtonTapped), for: .touchUpInside)
         return button
     }()
     private lazy var deleteEventButton: UIButton = {
@@ -131,6 +141,14 @@ final class EditEventViewController: UIViewController {
         view.translatesAutoresizingMaskIntoConstraints = false
         return view
     }()
+    private let buttonsHorizontalStackView: UIStackView = {
+        let stack = UIStackView()
+        stack.axis = .horizontal
+        stack.spacing = 12
+        stack.distribution = .fillEqually
+        stack.alignment = .fill
+        return stack
+    }()
     init(eventId: String, eventDetails: EventDetailModel) {
         self.eventId = eventId
         self.eventDetails = eventDetails
@@ -149,6 +167,7 @@ final class EditEventViewController: UIViewController {
         setupKeyboardDismissRecognizer()
     }
     private func setupLayout() {
+        createGameButton.isHidden = true
         view.addSubview(scrollView)
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.addSubview(contentStackView)
@@ -167,15 +186,18 @@ final class EditEventViewController: UIViewController {
         contentStackView.setCustomSpacing(32, after: teamsTextField.superview ?? teamsTextField)
         contentStackView.addArrangedSubview(closeRegistrationButton)
         contentStackView.setCustomSpacing(12, after: closeRegistrationButton)
-        contentStackView.addArrangedSubview(finishEventButton)
-        contentStackView.setCustomSpacing(12, after: finishEventButton)
-        contentStackView.addArrangedSubview(cancelEventButton)
-        contentStackView.setCustomSpacing(12, after: cancelEventButton)
+        contentStackView.addArrangedSubview(createGameButton)
+        contentStackView.setCustomSpacing(12, after: createGameButton)
+        buttonsHorizontalStackView.addArrangedSubview(finishEventButton)
+        buttonsHorizontalStackView.addArrangedSubview(cancelEventButton)
+        contentStackView.addArrangedSubview(buttonsHorizontalStackView)
+        contentStackView.setCustomSpacing(12, after: buttonsHorizontalStackView)
         contentStackView.addArrangedSubview(deleteEventButton)
         contentStackView.setCustomSpacing(12, after: deleteEventButton)
         contentStackView.addArrangedSubview(saveButton)
         contentStackView.setCustomSpacing(12, after: saveButton)
         contentStackView.addArrangedSubview(backButton)
+        createGameButton.translatesAutoresizingMaskIntoConstraints = false
         saveButton.translatesAutoresizingMaskIntoConstraints = false
         deleteEventButton.translatesAutoresizingMaskIntoConstraints = false
         closeRegistrationButton.translatesAutoresizingMaskIntoConstraints = false
@@ -202,7 +224,8 @@ final class EditEventViewController: UIViewController {
             deleteEventButton.heightAnchor.constraint(equalToConstant: 48),
             closeRegistrationButton.heightAnchor.constraint(equalToConstant: 48),
             finishEventButton.heightAnchor.constraint(equalToConstant: 48),
-            cancelEventButton.heightAnchor.constraint(equalToConstant: 48)
+            cancelEventButton.heightAnchor.constraint(equalToConstant: 48),
+            createGameButton.heightAnchor.constraint(equalToConstant: 48),
         ])
     }
     private func configureUIWithCurrentData() {
@@ -221,6 +244,11 @@ final class EditEventViewController: UIViewController {
             eventImageView.loadImage(from: photo.fullUrlString, placeholder: UIImage(named: "imageProfile"))
         } else {
             eventImageView.image = UIImage(named: "imageProfile")
+        }
+        if eventDetails.eventType == "TOURNAMENT" {
+            createGameButton.isHidden = false
+        } else {
+            createGameButton.isHidden = true
         }
         updateCloseRegistrationButton()
     }
@@ -389,6 +417,10 @@ final class EditEventViewController: UIViewController {
     }
     @objc private func backButtonTapped() {
         navigationController?.popViewController(animated: true)
+    }
+    @objc private func createGameButtonTapped() {
+        let createGameVC = CreateGameViewController(eventId: eventId, teams: eventDetails.teams)
+        navigationController?.pushViewController(createGameVC, animated: true)
     }
     @objc private func deleteEventButtonTapped() {
         let alert = UIAlertController(
